@@ -1,0 +1,11 @@
+[package]
+name = "ratto-entry"
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ratto-qemu = { path = "../ratto-qemu", optional = true }
+
+[features]
+qemu = ["ratto-qemu"]

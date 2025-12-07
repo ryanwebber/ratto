@@ -1,0 +1,9 @@
+[workspace]
+members = ["ratto-buildimg", "ratto-entry", "ratto-kernel","ratto-qemu", "ratto-xtask"]
+default-members = ["ratto-xtask"]
+resolver = "3"
+
+[workspace.package]
+authors = ["Ryan Webber"]
+version = "0.1.0"
+edition = "2024"
