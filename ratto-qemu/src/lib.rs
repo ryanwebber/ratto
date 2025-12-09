@@ -26,10 +26,6 @@ pub fn exit_qemu(exit_code: QemuExitCode) -> ! {
 #[cfg(target_arch = "aarch64")]
 pub fn exit_qemu(code: QemuExitCode) -> ! {
     unsafe {
-        // For debugging: output a character to the UART0.
-        const UART0_DR: *mut u32 = 0x3F201000 as *mut u32;
-        core::ptr::write_volatile(UART0_DR, b'W' as u32);
-
         #[repr(C)]
         struct QEMUParameterBlock {
             arg0: u64,
@@ -58,12 +54,5 @@ pub fn exit_qemu(code: QemuExitCode) -> ! {
         loop {
             core::arch::asm!("wfe", options(nomem, nostack));
         }
-
-        core::arch::asm!(
-            "mov x0, {addr}",
-            "hvc #0",
-            addr = in(reg) 0x84000000u64, // PSCI_SYSTEM_OFF
-            options(noreturn)
-        );
     }
 }

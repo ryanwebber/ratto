@@ -4,16 +4,23 @@
 mod arch;
 
 use core::panic::PanicInfo;
+use ratto_kernel::{Kernel, KernelArgs};
 
-unsafe fn kernel_init() -> ! {
-    panic!()
+#[cfg(not(feature = "qemu"))]
+use ratto_kernel::arch::{Cpu, CpuOps};
+
+unsafe fn kernel_init(args: KernelArgs) -> ! {
+    Kernel::init(args);
+    Kernel::run();
 }
 
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
+fn panic(info: &PanicInfo) -> ! {
+    Kernel::panic_dump(info);
+
     #[cfg(feature = "qemu")]
     ratto_qemu::exit_qemu(ratto_qemu::QemuExitCode::Failed);
 
     #[cfg(not(feature = "qemu"))]
-    arch::cpu::wait_forever();
+    Cpu::wait_forever();
 }

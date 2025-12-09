@@ -1,14 +1,144 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+#![cfg_attr(not(test), no_std)]
+#![feature(sync_unsafe_cell)]
+#![feature(format_args_nl)]
+
+use core::cell::SyncUnsafeCell;
+use core::fmt::Debug;
+use core::panic::PanicInfo;
+
+use crate::console::Console;
+
+pub mod arch;
+pub mod console;
+pub mod print;
+pub mod sync;
+
+static KERNEL_INSTANCE: KernelCell = KernelCell::new();
+
+pub struct Kernel {
+    console: Option<&'static dyn Console>,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+unsafe impl Sync for Kernel {}
+unsafe impl Send for Kernel {}
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+impl Debug for Kernel {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Kernel")
+            .field("console", &self.console)
+            .finish()
     }
+}
+
+impl Kernel {
+    pub fn init(args: KernelArgs) {
+        assert!(
+            matches!(kernel(), KernelState::Uninit),
+            "Kernel::init() called more than once"
+        );
+
+        KERNEL_INSTANCE.promote(KernelState::Initializing(args.console));
+
+        klog!("Kernel initialization started...");
+
+        let kernel = Kernel {
+            console: args.console,
+        };
+
+        KERNEL_INSTANCE.promote(KernelState::Ready(kernel));
+        klog!("Kernel initialization completed.");
+    }
+
+    pub fn run() -> ! {
+        assert!(
+            kernel().is_ready(),
+            "Kernel::run() called before Kernel::init()"
+        );
+
+        klog!("Kernel main loop starting...");
+        panic!("Unimplemented: Kernel main loop");
+    }
+
+    pub fn panic_dump(info: &PanicInfo) {
+        kerr!("!!! Kernel panic !!!");
+
+        if let Some(location) = info.location() {
+            kraw!("At: {}", location);
+        }
+
+        kraw!("Reason: {}", info.message());
+
+        if let Some(kernel) = kernel().try_as_ready() {
+            kraw!("State: {:#?}", kernel);
+        }
+    }
+}
+
+pub struct KernelArgs {
+    pub console: Option<&'static dyn Console>,
+}
+
+pub enum KernelState {
+    Uninit,
+    Initializing(Option<&'static dyn Console>),
+    Ready(Kernel),
+}
+
+unsafe impl Sync for KernelState {}
+unsafe impl Send for KernelState {}
+
+impl KernelState {
+    pub fn console(&self) -> Option<&dyn Console> {
+        match self {
+            KernelState::Uninit => None,
+            KernelState::Initializing(console) => *console,
+            KernelState::Ready(kernel) => kernel.console,
+        }
+    }
+
+    pub fn is_ready(&self) -> bool {
+        matches!(self, KernelState::Ready(..))
+    }
+
+    pub fn as_ready(&self) -> &Kernel {
+        match self {
+            KernelState::Ready(kernel) => kernel,
+            _ => panic!("Kernel is not ready"),
+        }
+    }
+
+    pub fn try_as_ready(&self) -> Option<&Kernel> {
+        match self {
+            KernelState::Ready(kernel) => Some(kernel),
+            _ => None,
+        }
+    }
+}
+
+pub struct KernelCell {
+    inner: SyncUnsafeCell<KernelState>,
+}
+
+impl KernelCell {
+    pub const fn new() -> Self {
+        KernelCell {
+            inner: SyncUnsafeCell::new(KernelState::Uninit),
+        }
+    }
+
+    pub fn get(&self) -> &KernelState {
+        unsafe { &*self.inner.get() }
+    }
+
+    pub fn promote(&self, state: KernelState) {
+        unsafe {
+            let ptr = self.inner.get();
+            core::ptr::write(ptr, state);
+        }
+    }
+}
+
+pub fn kernel() -> &'static KernelState {
+    let kernel_ptr = KERNEL_INSTANCE.get();
+    &*kernel_ptr
 }

@@ -77,7 +77,8 @@ impl VirtualizationProvider {
         config: &Config,
         args: &[String],
     ) -> anyhow::Result<()> {
-        match self {
+        println!("Starting virtualization with provider: {}", self);
+        let status = match self {
             VirtualizationProvider::Qemu => {
                 let mut cmd = match config.arch {
                     Architecture::AArch64 => {
@@ -109,11 +110,16 @@ impl VirtualizationProvider {
                     .args(&["-serial", "mon:stdio"])
                     .args(&["-audio", "none"])
                     .status()
-                    .context("Failed to run QEMU")?;
+                    .unwrap()
             }
-        }
+        };
 
-        Ok(())
+        if status.success() {
+            println!("Virtualization session ended successfully.");
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!("Virtualization session ended with errors."))
+        }
     }
 }
 
@@ -126,9 +132,11 @@ impl Display for VirtualizationProvider {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Deserialize, Serialize, ValueEnum)]
 enum Architecture {
+    #[value(name = "aarch64")]
     AArch64,
+    #[value(name = "x86_64")]
     X86_64,
 }
 
@@ -159,7 +167,7 @@ struct Config {
 
 fn main() {
     if let Err(e) = try_main() {
-        eprintln!("[Error] {}", e);
+        eprintln!("(Error) {}", e);
         std::process::exit(1);
     }
 }

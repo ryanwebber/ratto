@@ -1,6 +1,6 @@
 [workspace]
-members = ["ratto-buildimg", "ratto-entry", "ratto-kernel","ratto-qemu", "ratto-xtask"]
-default-members = ["ratto-xtask"]
+members = ["ratto-core","ratto-entry", "ratto-kernel","ratto-qemu", "ratto-xtask"]
+default-members = ["ratto-core", "ratto-xtask"]
 resolver = "3"
 
 [workspace.package]

@@ -210,13 +210,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "ratto-buildimg"
+name = "ratto-core"
 version = "0.1.0"
 
 [[package]]
 name = "ratto-entry"
 version = "0.1.0"
 dependencies = [
+ "ratto-kernel",
  "ratto-qemu",
 ]
 

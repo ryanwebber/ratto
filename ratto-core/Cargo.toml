@@ -1,5 +1,5 @@
 [package]
-name = "ratto-buildimg"
+name = "ratto-core"
 authors.workspace = true
 version.workspace = true
 edition.workspace = true
