@@ -11,7 +11,6 @@ use crate::console::Console;
 pub mod arch;
 pub mod console;
 pub mod print;
-pub mod sync;
 
 static KERNEL_INSTANCE: KernelCell = KernelCell::new();
 

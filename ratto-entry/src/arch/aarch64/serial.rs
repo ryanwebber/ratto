@@ -1,4 +1,5 @@
-use ratto_kernel::{arch::aarch64, console, sync::SpinLock};
+use ratto_core::sync::SpinLock;
+use ratto_kernel::{arch::aarch64, console};
 
 pub static SERIAL_CONSOLE: SerialConsole = SerialConsole {
     lock: SpinLock::new(()),

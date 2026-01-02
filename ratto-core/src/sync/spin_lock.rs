@@ -1,13 +1,14 @@
 use core::hint::spin_loop;
 use core::sync::atomic::Ordering;
 
-use crate::arch::CpuOps;
+use crate::cpu::CpuOps;
 
 pub struct SpinLock<T: Sized, Cpu: CpuOps> {
     data: core::cell::UnsafeCell<T>,
     lock: core::sync::atomic::AtomicBool,
     _phantom: core::marker::PhantomData<Cpu>,
 }
+
 unsafe impl<T: Sized + Send, Cpu: CpuOps> Sync for SpinLock<T, Cpu> {}
 unsafe impl<T: Sized + Send, Cpu: CpuOps> Send for SpinLock<T, Cpu> {}
 

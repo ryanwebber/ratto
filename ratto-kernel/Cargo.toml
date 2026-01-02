@@ -5,3 +5,4 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+ratto-core = { path = "../ratto-core" }

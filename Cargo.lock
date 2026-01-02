@@ -217,6 +217,7 @@ version = "0.1.0"
 name = "ratto-entry"
 version = "0.1.0"
 dependencies = [
+ "ratto-core",
  "ratto-kernel",
  "ratto-qemu",
 ]
@@ -224,6 +225,9 @@ dependencies = [
 [[package]]
 name = "ratto-kernel"
 version = "0.1.0"
+dependencies = [
+ "ratto-core",
+]
 
 [[package]]
 name = "ratto-qemu"

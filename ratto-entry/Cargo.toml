@@ -5,6 +5,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+ratto-core = { path = "../ratto-core" }
 ratto-kernel = { path = "../ratto-kernel" }
 ratto-qemu = { path = "../ratto-qemu", optional = true }
 

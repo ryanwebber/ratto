@@ -1,10 +1,10 @@
-use crate::sync::SpinLock;
+use crate::{cpu::CpuOps, sync::SpinLock};
 
-pub struct OnceLock<T, Cpu: crate::arch::CpuOps> {
+pub struct OnceLock<T, Cpu: CpuOps> {
     inner: SpinLock<Option<T>, Cpu>,
 }
 
-impl<T, Cpu: crate::arch::CpuOps> OnceLock<T, Cpu> {
+impl<T, Cpu: CpuOps> OnceLock<T, Cpu> {
     pub const fn new() -> Self {
         OnceLock {
             inner: SpinLock::new(None),
@@ -47,5 +47,5 @@ impl<T, Cpu: crate::arch::CpuOps> OnceLock<T, Cpu> {
     }
 }
 
-unsafe impl<T: Send, Cpu: crate::arch::CpuOps> Sync for OnceLock<T, Cpu> {}
-unsafe impl<T: Send, Cpu: crate::arch::CpuOps> Send for OnceLock<T, Cpu> {}
+unsafe impl<T: Send, Cpu: CpuOps> Sync for OnceLock<T, Cpu> {}
+unsafe impl<T: Send, Cpu: CpuOps> Send for OnceLock<T, Cpu> {}

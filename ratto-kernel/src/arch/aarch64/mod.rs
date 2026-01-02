@@ -1,5 +1,7 @@
 use core::arch::asm;
 
+use ratto_core::cpu::CpuOps;
+
 use crate::arch::ArchImpl;
 
 pub struct Impl;
@@ -10,7 +12,7 @@ impl ArchImpl for Impl {
 
 pub struct Cpu;
 
-impl crate::arch::CpuOps for Cpu {
+impl CpuOps for Cpu {
     type InterruptState = u64;
 
     fn disable_interrupts() -> Self::InterruptState {
