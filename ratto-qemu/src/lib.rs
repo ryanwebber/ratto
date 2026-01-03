@@ -1,5 +1,7 @@
 #![no_std]
 
+use ratto_kernel::{arch::sync::SpinLock, console};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QemuExitCode {
     Success,
@@ -54,5 +56,37 @@ pub fn exit_qemu(code: QemuExitCode) -> ! {
         loop {
             core::arch::asm!("wfe", options(nomem, nostack));
         }
+    }
+}
+
+pub struct SerialConsole {
+    lock: SpinLock<()>,
+}
+
+impl SerialConsole {
+    pub const fn new() -> Self {
+        SerialConsole {
+            lock: SpinLock::new(()),
+        }
+    }
+}
+
+impl console::Console for SerialConsole {
+    fn write_str(&self, s: &str) -> core::fmt::Result {
+        self.lock.lock_with(|_| {
+            for c in s.chars() {
+                unsafe {
+                    core::ptr::write_volatile(0x3F20_1000 as *mut u8, c as u8);
+                }
+            }
+        });
+
+        Ok(())
+    }
+}
+
+impl core::fmt::Debug for SerialConsole {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("QEMUSerialConsole").finish()
     }
 }

@@ -4,6 +4,9 @@ authors.workspace = true
 version.workspace = true
 edition.workspace = true
 
+[dependencies]
+ratto-kernel = { path = "../ratto-kernel" }
+
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 x86_64 = { version = "0.15.4", features = ["instructions"] }
 

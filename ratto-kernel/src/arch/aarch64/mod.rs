@@ -8,6 +8,11 @@ pub struct Impl;
 
 impl ArchImpl for Impl {
     type Cpu = Cpu;
+    type InitError = ();
+
+    fn try_init() -> Result<(), Self::InitError> {
+        Ok(())
+    }
 }
 
 pub struct Cpu;

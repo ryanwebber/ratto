@@ -234,6 +234,7 @@ name = "ratto-qemu"
 version = "0.1.0"
 dependencies = [
  "aarch64",
+ "ratto-kernel",
  "x86_64",
 ]
 

@@ -6,6 +6,7 @@ use core::cell::SyncUnsafeCell;
 use core::fmt::Debug;
 use core::panic::PanicInfo;
 
+use crate::arch::ArchImpl;
 use crate::console::Console;
 
 pub mod arch;
@@ -17,9 +18,6 @@ static KERNEL_INSTANCE: KernelCell = KernelCell::new();
 pub struct Kernel {
     console: Option<&'static dyn Console>,
 }
-
-unsafe impl Sync for Kernel {}
-unsafe impl Send for Kernel {}
 
 impl Debug for Kernel {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -39,6 +37,8 @@ impl Kernel {
         KERNEL_INSTANCE.promote(KernelState::Initializing(args.console));
 
         klog!("Kernel initialization started...");
+
+        arch::Current::try_init().expect("Failed architecture initialization");
 
         let kernel = Kernel {
             console: args.console,
@@ -66,10 +66,7 @@ impl Kernel {
         }
 
         kraw!("Reason: {}", info.message());
-
-        if let Some(kernel) = kernel().try_as_ready() {
-            kraw!("State: {:#?}", kernel);
-        }
+        kraw!("Kernel State: {:#?}", kernel());
     }
 }
 
@@ -77,14 +74,12 @@ pub struct KernelArgs {
     pub console: Option<&'static dyn Console>,
 }
 
+#[derive(Debug)]
 pub enum KernelState {
     Uninit,
     Initializing(Option<&'static dyn Console>),
     Ready(Kernel),
 }
-
-unsafe impl Sync for KernelState {}
-unsafe impl Send for KernelState {}
 
 impl KernelState {
     pub fn console(&self) -> Option<&dyn Console> {

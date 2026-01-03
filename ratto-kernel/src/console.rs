@@ -1,6 +1,6 @@
 use core::fmt::{Debug, Write};
 
-pub trait Console: Debug {
+pub trait Console: Debug + Send + Sync {
     fn write_str(&self, s: &str) -> core::fmt::Result;
     fn write_fmt(&self, args: core::fmt::Arguments) -> core::fmt::Result {
         let mut adapter = WriteAdapter { console: self };
