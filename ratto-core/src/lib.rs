@@ -1,6 +1,8 @@
 #![cfg_attr(not(test), no_std)]
 
+pub mod boot;
 pub mod cpu;
+pub mod mem;
 pub mod sync;
 
 #[cfg(test)]

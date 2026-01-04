@@ -1,23 +1,9 @@
-// SPDX-License-Identifier: MIT OR Apache-2.0
-//
-// Copyright (c) 2021-2023 Andre Richter <andre.o.richter@gmail.com>
-
-//! Architectural boot code.
-//!
-//! # Orientation
-//!
-//! Since arch modules are imported into generic modules using the path attribute, the path of this
-//! file is:
-//!
-//! crate::cpu::boot::arch_boot
-
 use core::arch::global_asm;
 
-use ratto_kernel::KernelArgs;
+use ratto_kernel::{Kernel, KernelArgs, console::Console};
 
-use crate::kernel_init;
-
-pub mod cpu;
+mod boot;
+mod cpu;
 
 global_asm!(
     include_str!("entry.s"),
@@ -26,20 +12,26 @@ global_asm!(
 
 #[unsafe(no_mangle)]
 pub unsafe fn _start_rust() -> ! {
-    let args = KernelArgs {
-        console: {
-            #[cfg(feature = "qemu")]
-            {
-                static SERIAL_CONSOLE: ratto_qemu::SerialConsole = ratto_qemu::SerialConsole::new();
-                Some(&SERIAL_CONSOLE)
-            }
+    let console: Option<&'static dyn Console> = {
+        #[cfg(feature = "qemu")]
+        {
+            static SERIAL_CONSOLE: ratto_qemu::SerialConsole = ratto_qemu::SerialConsole::new();
+            Some(&SERIAL_CONSOLE)
+        }
 
-            #[cfg(not(feature = "qemu"))]
-            {
-                None
-            }
-        },
+        #[cfg(not(feature = "qemu"))]
+        {
+            None
+        }
     };
 
-    unsafe { kernel_init(args) }
+    Kernel::init1(console);
+
+    let args = KernelArgs {
+        boot_info: boot::boot_info(),
+        console,
+    };
+
+    Kernel::init2(args);
+    Kernel::run();
 }

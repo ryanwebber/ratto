@@ -6,6 +6,8 @@ use core::cell::SyncUnsafeCell;
 use core::fmt::Debug;
 use core::panic::PanicInfo;
 
+use ratto_core::boot::BootInfo;
+
 use crate::arch::ArchImpl;
 use crate::console::Console;
 
@@ -28,17 +30,32 @@ impl Debug for Kernel {
 }
 
 impl Kernel {
-    pub fn init(args: KernelArgs) {
+    /// Setup a console logger that can be used for early initialization messages.
+    pub fn init1(console: Option<&'static dyn Console>) {
         assert!(
             matches!(kernel(), KernelState::Uninit),
             "Kernel::init() called more than once"
         );
 
-        KERNEL_INSTANCE.promote(KernelState::Initializing(args.console));
+        KERNEL_INSTANCE.promote(KernelState::Init1(console));
+    }
 
+    /// Complete kernel initialization.
+    pub fn init2(args: KernelArgs<arch::BootInfo>) {
+        assert!(
+            matches!(kernel(), KernelState::Init1(..)),
+            "Kernel::init() called more than once"
+        );
+
+        KERNEL_INSTANCE.promote(KernelState::Init2(args.clone()));
         klog!("Kernel initialization started...");
+        klog!("Boot info: {:#?}", args.boot_info);
 
-        arch::Current::try_init().expect("Failed architecture initialization");
+        let (memory_mapper, frame_allocator) =
+            arch::Impl::init_memory(&args.boot_info).expect("Failed to initialize memory");
+
+        // Suppress unused variable warnings for now
+        (_, _) = (memory_mapper, frame_allocator);
 
         let kernel = Kernel {
             console: args.console,
@@ -59,6 +76,11 @@ impl Kernel {
     }
 
     pub fn panic_dump(info: &PanicInfo) {
+        if kernel().console().is_none() {
+            // No console available; cannot print panic information
+            return;
+        }
+
         kerr!("!!! Kernel panic !!!");
 
         if let Some(location) = info.location() {
@@ -70,14 +92,17 @@ impl Kernel {
     }
 }
 
-pub struct KernelArgs {
+#[derive(Debug, Clone)]
+pub struct KernelArgs<B: BootInfo> {
+    pub boot_info: B,
     pub console: Option<&'static dyn Console>,
 }
 
 #[derive(Debug)]
 pub enum KernelState {
     Uninit,
-    Initializing(Option<&'static dyn Console>),
+    Init1(Option<&'static dyn Console>),
+    Init2(KernelArgs<arch::BootInfo>),
     Ready(Kernel),
 }
 
@@ -85,7 +110,8 @@ impl KernelState {
     pub fn console(&self) -> Option<&dyn Console> {
         match self {
             KernelState::Uninit => None,
-            KernelState::Initializing(console) => *console,
+            KernelState::Init1(console) => *console,
+            KernelState::Init2(args) => args.console,
             KernelState::Ready(kernel) => kernel.console,
         }
     }

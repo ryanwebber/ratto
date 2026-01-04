@@ -1,56 +1,22 @@
-use core::arch::asm;
-
-use ratto_core::cpu::CpuOps;
-
 use crate::arch::ArchImpl;
 
-pub struct Impl;
+pub mod boot;
+pub mod cpu;
+pub mod mem;
 
-impl ArchImpl for Impl {
-    type Cpu = Cpu;
-    type InitError = ();
+pub struct AArch64;
 
-    fn try_init() -> Result<(), Self::InitError> {
-        Ok(())
-    }
-}
+impl ArchImpl for AArch64 {
+    type Cpu = cpu::Cpu;
+    type MemoryMapper = mem::MemoryMapper;
+    type FrameAllocator = mem::FrameAllocator;
+    type BootInfo = boot::BootInfo;
 
-pub struct Cpu;
-
-impl CpuOps for Cpu {
-    type InterruptState = u64;
-
-    fn disable_interrupts() -> Self::InterruptState {
-        let flags: u64;
-        unsafe {
-            asm!(
-                "mrs {0}, daif",
-                "msr daifset, #2",
-                out(reg) flags,
-                options(nomem, nostack)
-            );
-        }
-
-        flags
-    }
-
-    fn enable_interrupts(flags: Self::InterruptState) {
-        unsafe {
-            asm!(
-                "msr daif, {0}",
-                in(reg) flags as u64,
-                options(nomem, nostack)
-            );
-        }
-    }
-
-    fn wait_forever() -> ! {
-        use core::arch::asm;
-
-        unsafe {
-            loop {
-                asm!("wfe", options(nomem, nostack));
-            }
-        }
+    fn init_memory(
+        boot_info: &Self::BootInfo,
+    ) -> Result<(Self::MemoryMapper, Self::FrameAllocator), &'static str> {
+        let alloc = Self::FrameAllocator::new(boot_info)?;
+        let mapper = Self::MemoryMapper::new(&alloc)?;
+        Ok((mapper, alloc))
     }
 }

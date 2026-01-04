@@ -1,76 +1,77 @@
-/* SPDX-License-Identifier: MIT OR Apache-2.0
- *
- * Copyright (c) 2018-2022 Andre Richter <andre.o.richter@gmail.com>
- */
+/* SPDX-License-Identifier: MIT OR Apache-2.0 */
 
-__rpi_phys_dram_start_addr = 0;
+__rpi_phys_dram_start_addr      = 0x00000000;
+__rpi_phys_binary_load_addr     = 0x00080000;
 
-/* The physical address at which the the kernel binary will be loaded by the Raspberry's firmware */
-__rpi_phys_binary_load_addr = 0x80000;
+ENTRY(_start)
 
-ENTRY(__rpi_phys_binary_load_addr)
-
-/* Flags:
- *     4 == R
- *     5 == RX
- *     6 == RW
- *
- * Segments are marked PT_LOAD below so that the ELF file provides virtual and physical addresses.
- * It doesn't mean all of them need actually be loaded.
- */
 PHDRS
 {
-    segment_boot_core_stack PT_LOAD FLAGS(6);
-    segment_code            PT_LOAD FLAGS(5);
-    segment_data            PT_LOAD FLAGS(6);
+    segment_code PT_LOAD FLAGS(5); /* RX */
+    segment_data PT_LOAD FLAGS(6); /* RW */
 }
 
 SECTIONS
 {
-    . =  __rpi_phys_dram_start_addr;
+    /* Kernel load address */
+    . = __rpi_phys_binary_load_addr;
+    __kernel_start = .;
 
     /***********************************************************************************************
-    * Boot Core Stack
-    ***********************************************************************************************/
-    .boot_core_stack (NOLOAD) :
-    {
-                                             /*   ^             */
-                                             /*   | stack       */
-        . += __rpi_phys_binary_load_addr;    /*   | growth      */
-                                             /*   | direction   */
-        __boot_core_stack_end_exclusive = .; /*   |             */
-    } :segment_boot_core_stack
-
-    /***********************************************************************************************
-    * Code + RO Data + Global Offset Table
-    ***********************************************************************************************/
-    .text :
+     * Code + RO Data
+     ***********************************************************************************************/
+    .text : ALIGN(4K)
     {
         KEEP(*(.text._start))
-        *(.text._start_arguments) /* Constants (or statics in Rust speak) read by _start(). */
-        *(.text._start_rust)      /* The Rust entry point */
-        *(.text*)                 /* Everything else */
+        *(.text._start_arguments)
+        *(.text._start_rust)
+        *(.text*)
     } :segment_code
 
-    .rodata : ALIGN(8) { *(.rodata*) } :segment_code
+    .rodata : ALIGN(8)
+    {
+        *(.rodata*)
+    } :segment_code
 
     /***********************************************************************************************
-    * Data + BSS
-    ***********************************************************************************************/
-    .data : { *(.data*) } :segment_data
+     * Data (must survive .bss zeroing!)
+     ***********************************************************************************************/
+    .data : ALIGN(8)
+    {
+        *(.data*)
 
-    /* Section is zeroed in pairs of u64. Align start and end to 16 bytes */
+        /* Boot-time data */
+        __dtb_ptr = .;
+        . += 8;
+    } :segment_data
+
+    /***********************************************************************************************
+     * BSS (zeroed by early assembly)
+     ***********************************************************************************************/
     .bss (NOLOAD) : ALIGN(16)
     {
         __bss_start = .;
-        *(.bss*);
+        *(.bss*)
+        *(COMMON)
         . = ALIGN(16);
         __bss_end_exclusive = .;
     } :segment_data
 
     /***********************************************************************************************
-    * Misc
-    ***********************************************************************************************/
+     * Boot Core Stack (not zeroed)
+     ***********************************************************************************************/
+    .boot_core_stack (NOLOAD) : ALIGN(16)
+    {
+        __boot_core_stack_start = .;
+        . += 0x4000; /* 16 KiB stack */
+        __boot_core_stack_end_exclusive = .;
+    }
+
+    __kernel_end = ALIGN(4K);
+
+    /***********************************************************************************************
+     * Misc
+     ***********************************************************************************************/
     .got : { *(.got*) }
     ASSERT(SIZEOF(.got) == 0, "Relocation support not expected")
 
